@@ -19,7 +19,7 @@ const GRID_ROWS = 14;
 
 export default function App() {
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
-  const [autoPoll, setAutoPoll] = useState(false);
+  const [connected, setConnected] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [jobId, setJobId] = useState(null);
@@ -35,7 +35,10 @@ export default function App() {
   const [showCropControls, setShowCropControls] = useState(false);
 
   const [selectedPoints, setSelectedPoints] = useState([]);
-  const pollTimerRef = useRef(null);
+  const socketRef = useRef(null);
+  const pingTimerRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+  const manualCloseRef = useRef(false);
 
   useEffect(() => {
     if (!imageUrl) return;
@@ -44,40 +47,88 @@ export default function App() {
     }, () => {});
   }, [imageUrl]);
 
-  const fetchNextJob = async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const cleanBase = serverUrl.trim().replace(/\/$/, '');
-      const res = await fetch(`${cleanBase}/api/next`);
-      if (res.status === 204) {
-        if (!silent) Alert.alert('Info', 'Aucune tâche en attente.');
-        return;
-      }
-      const data = await res.json();
-      if (data && data.id && data.imageDataUrl) {
-        if (data.id !== jobId) {
+  const connectSocket = () => {
+    const cleanBase = serverUrl.trim().replace(/\/$/, '');
+    const wsUrl = cleanBase
+      .replace(/^https:/i, 'wss:')
+      .replace(/^http:/i, 'ws:');
+
+    if (!/^wss?:\/\//i.test(wsUrl)) {
+      Alert.alert('URL invalide', 'Utilisez une URL http:// ou https:// valide.');
+      return;
+    }
+
+    if (socketRef.current && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socketRef.current.readyState)) {
+      return;
+    }
+
+    setLoading(true);
+    const socket = new WebSocket(wsUrl);
+    socketRef.current = socket;
+
+    socket.onopen = () => {
+      setConnected(true);
+      setLoading(false);
+      socket.send(JSON.stringify({ type: 'register_mobile' }));
+
+      clearInterval(pingTimerRef.current);
+      pingTimerRef.current = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 5 * 60 * 1000);
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'new_job' && data.id && data.imageDataUrl) {
           setJobId(data.id);
           setImageUrl(data.imageDataUrl);
           setSelectedPoints([]);
+          setLoading(false);
+          return;
         }
+
+        if (data.type === 'error') {
+          Alert.alert('Erreur serveur', data.error || 'Erreur WebSocket.');
+        }
+      } catch (error) {
+        console.error('Message WebSocket invalide :', error);
       }
-    } catch (error) {
-      if (!silent) Alert.alert('Erreur réseau', error.message);
-    } finally {
-      if (!silent) setLoading(false);
-    }
+    };
+
+    socket.onerror = () => {
+      setConnected(false);
+      setLoading(false);
+    };
+
+    socket.onclose = () => {
+      setConnected(false);
+      clearInterval(pingTimerRef.current);
+      pingTimerRef.current = null;
+      if (!manualCloseRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = setTimeout(connectSocket, 5000);
+      }
+    };
   };
 
   useEffect(() => {
-    if (autoPoll && !imageUrl) {
-      pollTimerRef.current = setInterval(() => fetchNextJob(true), 3000);
-    } else if (pollTimerRef.current) {
-      clearInterval(pollTimerRef.current);
-    }
+    manualCloseRef.current = false;
+    connectSocket();
+
     return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      manualCloseRef.current = true;
+      clearTimeout(reconnectTimerRef.current);
+      clearInterval(pingTimerRef.current);
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
     };
-  }, [autoPoll, imageUrl, serverUrl]);
+  }, [serverUrl]);
 
   const getCropRectPixels = () => {
     const { width, height } = containerSize;
@@ -153,21 +204,21 @@ export default function App() {
 
     setLoading(true);
     try {
-      const cleanBase = serverUrl.trim().replace(/\/$/, '');
-      const res = await fetch(`${cleanBase}/api/result/${jobId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ response: formattedAnswer }),
-      });
+      const socket = socketRef.current;
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        throw new Error('La connexion WebSocket n’est pas active.');
+      }
 
-      if (!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
+      socket.send(JSON.stringify({
+        type: 'submit_result',
+        id: jobId,
+        response: formattedAnswer,
+      }));
 
       setImageUrl(null);
       setJobId(null);
       setSelectedPoints([]);
-
-      if (autoPoll) fetchNextJob(true);
-      else Alert.alert('Envoyé !', `Réponse transmise :\n\n${formattedAnswer}`);
+      Alert.alert('Envoyé !', `Réponse transmise :\n\n${formattedAnswer}`);
     } catch (error) {
       Alert.alert('Échec', error.message);
     } finally {
@@ -189,10 +240,10 @@ export default function App() {
         <View style={styles.header}>
           <Text style={styles.title}>ONLY-FAUCET Mobile</Text>
           <TouchableOpacity
-            style={[styles.pollBadge, autoPoll ? styles.pollActive : styles.pollInactive]}
-            onPress={() => setAutoPoll(!autoPoll)}
+            style={[styles.pollBadge, connected ? styles.pollActive : styles.pollInactive]}
+            onPress={connectSocket}
           >
-            <Text style={styles.pollText}>{autoPoll ? 'Auto : ON' : 'Auto : OFF'}</Text>
+            <Text style={styles.pollText}>{connected ? 'WebSocket : ON' : 'WebSocket : OFF'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -205,7 +256,7 @@ export default function App() {
             placeholderTextColor="#64748b"
             autoCapitalize="none"
           />
-          <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchNextJob(false)} disabled={loading}>
+          <TouchableOpacity style={styles.refreshBtn} onPress={connectSocket} disabled={loading}>
             <Text style={styles.refreshBtnText}>Charger</Text>
           </TouchableOpacity>
         </View>

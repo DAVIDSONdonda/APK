@@ -18,33 +18,25 @@ const GRID_COLS = 23; // A à W
 const GRID_ROWS = 14; // 1 à 14
 
 export default function App() {
-  // Configuration serveur
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
   const [autoPoll, setAutoPoll] = useState(false);
 
-  // État de la tâche courante
   const [loading, setLoading] = useState(false);
   const [jobId, setJobId] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
   const [imageNaturalSize, setImageNaturalSize] = useState({ width: 1, height: 1 });
 
-  // Dimensions réelles du conteneur d'image affiché à l'écran
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-  // Ajustement du recadrage de la scène du bas (en pourcentage de l'image totale)
-  // Par défaut : l'en-tête occupe environ les 32% supérieurs, la scène commence à 32% jusqu'à 100%
   const [cropTopPct, setCropTopPct] = useState(0.32);
   const [cropBottomPct, setCropBottomPct] = useState(1.0);
   const [cropLeftPct, setCropLeftPct] = useState(0.0);
   const [cropRightPct, setCropRightPct] = useState(0.98);
   const [showCropControls, setShowCropControls] = useState(false);
 
-  // Points sélectionnés par l'utilisateur (coordonnées en pixels relatives au conteneur)
   const [selectedPoints, setSelectedPoints] = useState([]);
-
   const pollTimerRef = useRef(null);
 
-  // Récupérer les dimensions naturelles de l'image dès qu'elle est chargée
   useEffect(() => {
     if (!imageUrl) return;
     Image.getSize(
@@ -58,7 +50,6 @@ export default function App() {
     );
   }, [imageUrl]);
 
-  // Récupération de la tâche suivante depuis Render
   const fetchNextJob = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -76,7 +67,6 @@ export default function App() {
 
       const data = await res.json();
       if (data && data.id && data.imageDataUrl) {
-        // Éviter de recharger la même tâche en boucle
         if (data.id !== jobId) {
           setJobId(data.id);
           setImageUrl(data.imageDataUrl);
@@ -90,7 +80,6 @@ export default function App() {
     }
   };
 
-  // Surveillance automatique (Polling toutes les 3 secondes si activé)
   useEffect(() => {
     if (autoPoll && !imageUrl) {
       pollTimerRef.current = setInterval(() => {
@@ -104,7 +93,6 @@ export default function App() {
     };
   }, [autoPoll, imageUrl, serverUrl]);
 
-  // Calcul des limites en pixels de la zone de scène recadrée à l'écran
   const getCropRectPixels = () => {
     const { width, height } = containerSize;
     return {
@@ -117,12 +105,10 @@ export default function App() {
     };
   };
 
-  // Conversion d'un point (x, y) en coordonnée de grille "Lettre;Rangée"
   const pointToGridCell = (pt) => {
     const rect = getCropRectPixels();
     if (rect.cropWidth <= 0 || rect.cropHeight <= 0) return null;
 
-    // Position relative à l'intérieur du cadre vert (scène du bas)
     const relX = pt.x - rect.left;
     const relY = pt.y - rect.top;
 
@@ -135,7 +121,6 @@ export default function App() {
     colIdx = Math.max(0, Math.min(GRID_COLS - 1, colIdx));
     rowIdx = Math.max(0, Math.min(GRID_ROWS - 1, rowIdx));
 
-    // Conversion index colonne -> Lettre (0 -> A, 22 -> W)
     let colLetter = '';
     let tempCol = colIdx + 1;
     while (tempCol > 0) {
@@ -147,13 +132,11 @@ export default function App() {
     return `${colLetter};${rowIdx + 1}`;
   };
 
-  // Gestion du toucher sur l'image
   const handleImagePress = (event) => {
     if (!imageUrl) return;
     const { locationX, locationY } = event.nativeEvent;
     const rect = getCropRectPixels();
 
-    // Vérifier si l'utilisateur a bien cliqué dans la scène du bas (cadre vert)
     if (
       locationX < rect.left ||
       locationX > rect.right ||
@@ -170,12 +153,10 @@ export default function App() {
     if (selectedPoints.length < 2) {
       setSelectedPoints([...selectedPoints, { x: locationX, y: locationY }]);
     } else {
-      // Si 2 points sont déjà placés, un 3e clic recommence la sélection
       setSelectedPoints([{ x: locationX, y: locationY }]);
     }
   };
 
-  // Formater les 2 points sélectionnés
   const getFormattedResponse = () => {
     if (selectedPoints.length !== 2) return null;
     const cells = selectedPoints.map(pointToGridCell).filter(Boolean);
@@ -183,7 +164,6 @@ export default function App() {
     return cells.join('\n');
   };
 
-  // Envoi des coordonnées vers Render
   const sendResultToServer = async () => {
     const formattedAnswer = getFormattedResponse();
     if (!formattedAnswer) {
@@ -205,7 +185,6 @@ export default function App() {
         throw new Error(errData.error || `Erreur HTTP ${res.status}`);
       }
 
-      // Réinitialiser l'écran pour la prochaine tâche
       setImageUrl(null);
       setJobId(null);
       setSelectedPoints([]);
@@ -233,7 +212,6 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#0b1220" />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Barre supérieure */}
         <View style={styles.header}>
           <Text style={styles.title}>ONLY-FAUCET Mobile</Text>
           <TouchableOpacity
@@ -244,7 +222,6 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        {/* Champ URL serveur */}
         <View style={styles.serverRow}>
           <TextInput
             style={styles.serverInput}
@@ -268,7 +245,6 @@ export default function App() {
 
         {imageUrl ? (
           <View style={styles.workspace}>
-            {/* Barre d'outils d'ajustement du recadrage */}
             <View style={styles.toolbar}>
               <Text style={styles.jobLabel}>Tâche : {String(jobId).slice(0, 8)}…</Text>
               <TouchableOpacity
@@ -281,7 +257,6 @@ export default function App() {
               </TouchableOpacity>
             </View>
 
-            {/* Panneau d'ajustement précis du recadrage de la scène du bas */}
             {showCropControls && (
               <View style={styles.cropControlsBox}>
                 <Text style={styles.cropHelp}>
@@ -338,7 +313,6 @@ export default function App() {
               </View>
             )}
 
-            {/* Zone interactive contenant l'image composite complète */}
             <TouchableOpacity
               activeOpacity={1}
               onPress={handleImagePress}
@@ -350,7 +324,6 @@ export default function App() {
             >
               <Image source={{ uri: imageUrl }} style={styles.fullImage} resizeMode="stretch" />
 
-              {/* Cadre vert délimitant la scène du bas utilisée pour la grille 23x14 */}
               {containerSize.width > 0 && (
                 <View
                   pointerEvents="none"
@@ -366,7 +339,6 @@ export default function App() {
                 />
               )}
 
-              {/* Marqueurs des 2 monstres touchés */}
               {selectedPoints.map((pt, idx) => {
                 const cellCode = pointToGridCell(pt);
                 return (
@@ -384,7 +356,6 @@ export default function App() {
               })}
             </TouchableOpacity>
 
-            {/* Aperçu des coordonnées calculées */}
             <View style={styles.previewBox}>
               <Text style={styles.previewTitle}>
                 Coordonnées sélectionnées ({selectedPoints.length}/2) :
@@ -396,7 +367,6 @@ export default function App() {
               </Text>
             </View>
 
-            {/* Boutons d'action */}
             <View style={styles.actionsRow}>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.clearBtn]}
@@ -432,238 +402,47 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#0b1220',
-  },
-  scrollContainer: {
-    padding: 14,
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 19,
-    fontWeight: 'bold',
-    color: '#f1f5f9',
-  },
-  pollBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  pollActive: {
-    backgroundColor: '#059669',
-  },
-  pollInactive: {
-    backgroundColor: '#334155',
-  },
-  pollText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  serverRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-  },
-  serverInput: {
-    flex: 1,
-    backgroundColor: '#1e293b',
-    color: '#f8fafc',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    fontSize: 13,
-  },
-  refreshBtn: {
-    backgroundColor: '#2563eb',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  refreshBtnText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-  loader: {
-    marginVertical: 16,
-  },
-  workspace: {
-    width: '100%',
-  },
-  toolbar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  jobLabel: {
-    color: '#94a3b8',
-    fontSize: 12,
-  },
-  adjustToggleBtn: {
-    backgroundColor: '#1e293b',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#475569',
-  },
-  adjustToggleText: {
-    color: '#38bdf8',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  cropControlsBox: {
-    backgroundColor: '#1e293b',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  cropHelp: {
-    color: '#cbd5e1',
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  cropControlRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginVertical: 4,
-  },
-  cropLabel: {
-    color: '#94a3b8',
-    fontSize: 12,
-    width: 105,
-  },
-  stepBtn: {
-    backgroundColor: '#334155',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  stepBtnText: {
-    color: '#f8fafc',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  imageWrapper: {
-    width: '100%',
-    backgroundColor: '#000000',
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#475569',
-  },
-  fullImage: {
-    width: '100%',
-    height: '100%',
-  },
-  cropOverlay: {
-    position: 'absolute',
-    borderWidth: 2,
-    borderColor: '#10b981',
-    backgroundColor: 'rgba(16, 185, 129, 0.06)',
-  },
-  markerContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  markerCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.9)',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  markerNumber: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  markerBadge: {
-    marginTop: 2,
-    backgroundColor: '#0f172a',
-    color: '#38bdf8',
-    fontSize: 11,
-    fontWeight: 'bold',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  previewBox: {
-    backgroundColor: '#1e293b',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 10,
-    alignItems: 'center',
-  },
-  previewTitle: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  previewCode: {
-    color: '#10b981',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 12,
-  },
-  actionBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  clearBtn: {
-    backgroundColor: '#475569',
-  },
-  submitBtn: {
-    backgroundColor: '#10b981',
-  },
-  disabledBtn: {
-    backgroundColor: '#1e293b',
-    opacity: 0.6,
-  },
-  actionBtnText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  emptyState: {
-    marginTop: 60,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  emptyTitle: {
-    color: '#e2e8f0',
-    fontSize: 17,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  emptySub: {
-    color: '#94a3b8',
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  safeArea: { flex: 1, backgroundColor: '#0b1220' },
+  scrollContainer: { padding: 14, paddingBottom: 40 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  title: { fontSize: 19, fontWeight: 'bold', color: '#f1f5f9' },
+  pollBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  pollActive: { backgroundColor: '#059669' },
+  pollInactive: { backgroundColor: '#334155' },
+  pollText: { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
+  serverRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  serverInput: { flex: 1, backgroundColor: '#1e293b', color: '#f8fafc', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#334155', fontSize: 13 },
+  refreshBtn: { backgroundColor: '#2563eb', justifyContent: 'center', paddingHorizontal: 16, borderRadius: 8 },
+  refreshBtnText: { color: '#ffffff', fontWeight: 'bold', fontSize: 13 },
+  loader: { marginVertical: 16 },
+  workspace: { width: '100%' },
+  toolbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  jobLabel: { color: '#94a3b8', fontSize: 12 },
+  adjustToggleBtn: { backgroundColor: '#1e293b', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#475569' },
+  adjustToggleText: { color: '#38bdf8', fontSize: 12, fontWeight: '600' },
+  cropControlsBox: { backgroundColor: '#1e293b', padding: 10, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
+  cropHelp: { color: '#cbd5e1', fontSize: 12, marginBottom: 8 },
+  cropControlRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 4 },
+  cropLabel: { color: '#94a3b8', fontSize: 12, width: 105 },
+  stepBtn: { backgroundColor: '#334155', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  stepBtnText: { color: '#f8fafc', fontSize: 12, fontWeight: '600' },
+  imageWrapper: { width: '100%', backgroundColor: '#000000', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#475569' },
+  fullImage: { width: '100%', height: '100%' },
+  cropOverlay: { position: 'absolute', borderWidth: 2, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.06)' },
+  markerContainer: { position: 'absolute', alignItems: 'center' },
+  markerCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(239, 68, 68, 0.9)', borderWidth: 2, borderColor: '#ffffff', justifyContent: 'center', alignItems: 'center' },
+  markerNumber: { color: '#ffffff', fontWeight: 'bold', fontSize: 14 },
+  markerBadge: { marginTop: 2, backgroundColor: '#0f172a', color: '#38bdf8', fontSize: 11, fontWeight: 'bold', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, overflow: 'hidden' },
+  previewBox: { backgroundColor: '#1e293b', padding: 10, borderRadius: 8, marginTop: 10, alignItems: 'center' },
+  previewTitle: { color: '#94a3b8', fontSize: 12, marginBottom: 4 },
+  previewCode: { color: '#10b981', fontWeight: 'bold', fontSize: 14 },
+  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  actionBtn: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
+  clearBtn: { backgroundColor: '#475569' },
+  submitBtn: { backgroundColor: '#10b981' },
+  disabledBtn: { backgroundColor: '#1e293b', opacity: 0.6 },
+  actionBtnText: { color: '#ffffff', fontWeight: 'bold', fontSize: 15 },
+  emptyState: { marginTop: 60, alignItems: 'center', paddingHorizontal: 20 },
+  emptyTitle: { color: '#e2e8f0', fontSize: 17, fontWeight: 'bold', marginBottom: 8 },
+  emptySub: { color: '#94a3b8', fontSize: 13, textAlign: 'center', lineHeight: 20 }
 });

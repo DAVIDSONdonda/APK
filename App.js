@@ -223,7 +223,6 @@ export default function App() {
       setImageUrl(null);
       setJobId(null);
       setSelectedPoints([]);
-      Alert.alert('Envoyé !', `Réponse transmise :\n\n${formattedAnswer}`);
     } catch (error) {
       Alert.alert('Échec', error.message);
     } finally {

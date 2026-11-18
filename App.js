@@ -145,7 +145,7 @@ export default function App() {
     ) {
       Alert.alert(
         'Hors zone',
-        'Touchez directement les monstres à l’intérieur du cadre vert de la scène du bas.'
+        'Touchez directement les monstres à l’intérieur du cadre vert.'
       );
       return;
     }
@@ -260,11 +260,11 @@ export default function App() {
             {showCropControls && (
               <View style={styles.cropControlsBox}>
                 <Text style={styles.cropHelp}>
-                  Alignez le cadre vert exactement sur les bords de la scène du bas :
+                  Alignez le cadre vert exactement sur les bords de la scène :
                 </Text>
 
                 <View style={styles.cropControlRow}>
-                  <Text style={styles.cropLabel}>Haut (En-tête) :</Text>
+                  <Text style={styles.cropLabel}>Haut :</Text>
                   <TouchableOpacity
                     style={styles.stepBtn}
                     onPress={() => setCropTopPct((v) => Math.max(0, +(v - 0.01).toFixed(2)))}
@@ -292,22 +292,6 @@ export default function App() {
                     onPress={() => setCropBottomPct((v) => Math.min(1.0, +(v + 0.01).toFixed(2)))}
                   >
                     <Text style={styles.stepBtnText}>▼ Descendre</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.cropControlRow}>
-                  <Text style={styles.cropLabel}>Droite :</Text>
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => setCropRightPct((v) => Math.max(0.7, +(v - 0.01).toFixed(2)))}
-                  >
-                    <Text style={styles.stepBtnText}>◀ Réduire</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => setCropRightPct((v) => Math.min(1.0, +(v + 0.01).toFixed(2)))}
-                  >
-                    <Text style={styles.stepBtnText}>▶ Étendre</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -392,7 +376,7 @@ export default function App() {
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>En attente d’une capture…</Text>
             <Text style={styles.emptySub}>
-              Cliquez sur « Charger » ou activez le mode « Auto : ON » pour récupérer automatiquement les images depuis Render.
+              Cliquez sur « Charger » ou activez le mode « Auto : ON » pour récupérer automatiquement les images.
             </Text>
           </View>
         )}
@@ -423,26 +407,7 @@ const styles = StyleSheet.create({
   cropControlsBox: { backgroundColor: '#1e293b', padding: 10, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
   cropHelp: { color: '#cbd5e1', fontSize: 12, marginBottom: 8 },
   cropControlRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 4 },
-  cropLabel: { color: '#94a3b8', fontSize: 12, width: 105 },
+  cropLabel: { color: '#94a3b8', fontSize: 12, width: 70 },
   stepBtn: { backgroundColor: '#334155', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
   stepBtnText: { color: '#f8fafc', fontSize: 12, fontWeight: '600' },
-  imageWrapper: { width: '100%', backgroundColor: '#000000', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#475569' },
-  fullImage: { width: '100%', height: '100%' },
-  cropOverlay: { position: 'absolute', borderWidth: 2, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.06)' },
-  markerContainer: { position: 'absolute', alignItems: 'center' },
-  markerCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(239, 68, 68, 0.9)', borderWidth: 2, borderColor: '#ffffff', justifyContent: 'center', alignItems: 'center' },
-  markerNumber: { color: '#ffffff', fontWeight: 'bold', fontSize: 14 },
-  markerBadge: { marginTop: 2, backgroundColor: '#0f172a', color: '#38bdf8', fontSize: 11, fontWeight: 'bold', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, overflow: 'hidden' },
-  previewBox: { backgroundColor: '#1e293b', padding: 10, borderRadius: 8, marginTop: 10, alignItems: 'center' },
-  previewTitle: { color: '#94a3b8', fontSize: 12, marginBottom: 4 },
-  previewCode: { color: '#10b981', fontWeight: 'bold', fontSize: 14 },
-  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  actionBtn: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-  clearBtn: { backgroundColor: '#475569' },
-  submitBtn: { backgroundColor: '#10b981' },
-  disabledBtn: { backgroundColor: '#1e293b', opacity: 0.6 },
-  actionBtnText: { color: '#ffffff', fontWeight: 'bold', fontSize: 15 },
-  emptyState: { marginTop: 60, alignItems: 'center', paddingHorizontal: 20 },
-  emptyTitle: { color: '#e2e8f0', fontSize: 17, fontWeight: 'bold', marginBottom: 8 },
-  emptySub: { color: '#94a3b8', fontSize: 13, textAlign: 'center', lineHeight: 20 }
-});
+  imageWrapper: { width: '100%', backgroundColor: '#000000',

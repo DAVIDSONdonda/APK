@@ -20,6 +20,7 @@ const GRID_ROWS = 14;
 export default function App() {
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
   const [connected, setConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState('connecting');
 
   const [loading, setLoading] = useState(false);
   const [jobId, setJobId] = useState(null);
@@ -62,12 +63,14 @@ export default function App() {
       return;
     }
 
+    setConnectionState('connecting');
     setLoading(true);
     const socket = new WebSocket(wsUrl);
     socketRef.current = socket;
 
     socket.onopen = () => {
       setConnected(true);
+      setConnectionState('connected');
       setLoading(false);
       socket.send(JSON.stringify({ type: 'register_mobile' }));
 
@@ -101,11 +104,13 @@ export default function App() {
 
     socket.onerror = () => {
       setConnected(false);
+      setConnectionState('disconnected');
       setLoading(false);
     };
 
     socket.onclose = () => {
       setConnected(false);
+      setConnectionState('disconnected');
       clearInterval(pingTimerRef.current);
       pingTimerRef.current = null;
       if (!manualCloseRef.current) {
@@ -240,10 +245,26 @@ export default function App() {
         <View style={styles.header}>
           <Text style={styles.title}>ONLY-FAUCET Mobile</Text>
           <TouchableOpacity
-            style={[styles.pollBadge, connected ? styles.pollActive : styles.pollInactive]}
+            style={styles.connectionBadge}
             onPress={connectSocket}
           >
-            <Text style={styles.pollText}>{connected ? 'WebSocket : ON' : 'WebSocket : OFF'}</Text>
+            <View
+              style={[
+                styles.connectionDot,
+                connectionState === 'connected'
+                  ? styles.dotConnected
+                  : connectionState === 'connecting'
+                    ? styles.dotConnecting
+                    : styles.dotDisconnected,
+              ]}
+            />
+            <Text style={styles.pollText}>
+              {connectionState === 'connected'
+                ? 'Render : connecté'
+                : connectionState === 'connecting'
+                  ? 'Render : connexion…'
+                  : 'Render : déconnecté'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -373,9 +394,11 @@ const styles = StyleSheet.create({
   scrollContainer: { padding: 14, paddingBottom: 40 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   title: { fontSize: 19, fontWeight: 'bold', color: '#f1f5f9' },
-  pollBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  pollActive: { backgroundColor: '#059669' },
-  pollInactive: { backgroundColor: '#334155' },
+  connectionBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#475569' },
+  connectionDot: { width: 9, height: 9, borderRadius: 5, marginRight: 7 },
+  dotConnected: { backgroundColor: '#22c55e' },
+  dotConnecting: { backgroundColor: '#f59e0b' },
+  dotDisconnected: { backgroundColor: '#ef4444' },
   pollText: { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
   serverRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   serverInput: { flex: 1, backgroundColor: '#1e293b', color: '#f8fafc', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#334155', fontSize: 13 },

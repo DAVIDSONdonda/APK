@@ -14,8 +14,8 @@ import {
 } from 'react-native';
 
 const DEFAULT_SERVER_URL = 'https://only-faucet.onrender.com';
-const GRID_COLS = 23; // A à W
-const GRID_ROWS = 14; // 1 à 14
+const GRID_COLS = 23; 
+const GRID_ROWS = 14; 
 
 export default function App() {
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
@@ -39,15 +39,9 @@ export default function App() {
 
   useEffect(() => {
     if (!imageUrl) return;
-    Image.getSize(
-      imageUrl,
-      (width, height) => {
-        setImageNaturalSize({ width, height });
-      },
-      (err) => {
-        console.warn('Impossible de lire la taille de l’image:', err);
-      }
-    );
+    Image.getSize(imageUrl, (width, height) => {
+      setImageNaturalSize({ width, height });
+    }, () => {});
   }, [imageUrl]);
 
   const fetchNextJob = async (silent = false) => {
@@ -55,16 +49,10 @@ export default function App() {
     try {
       const cleanBase = serverUrl.trim().replace(/\/$/, '');
       const res = await fetch(`${cleanBase}/api/next`);
-
       if (res.status === 204) {
-        if (!silent) Alert.alert('Info', 'Aucune tâche en attente sur le serveur.');
+        if (!silent) Alert.alert('Info', 'Aucune tâche en attente.');
         return;
       }
-
-      if (!res.ok) {
-        throw new Error(`Erreur serveur HTTP ${res.status}`);
-      }
-
       const data = await res.json();
       if (data && data.id && data.imageDataUrl) {
         if (data.id !== jobId) {
@@ -82,9 +70,7 @@ export default function App() {
 
   useEffect(() => {
     if (autoPoll && !imageUrl) {
-      pollTimerRef.current = setInterval(() => {
-        fetchNextJob(true);
-      }, 3000);
+      pollTimerRef.current = setInterval(() => fetchNextJob(true), 3000);
     } else if (pollTimerRef.current) {
       clearInterval(pollTimerRef.current);
     }
@@ -143,10 +129,7 @@ export default function App() {
       locationY < rect.top ||
       locationY > rect.bottom
     ) {
-      Alert.alert(
-        'Hors zone',
-        'Touchez directement les monstres à l’intérieur du cadre vert.'
-      );
+      Alert.alert('Hors zone', 'Touchez à l’intérieur du cadre vert de la scène.');
       return;
     }
 
@@ -166,10 +149,7 @@ export default function App() {
 
   const sendResultToServer = async () => {
     const formattedAnswer = getFormattedResponse();
-    if (!formattedAnswer) {
-      Alert.alert('Sélection incomplète', 'Veuillez sélectionner exactement 2 monstres.');
-      return;
-    }
+    if (!formattedAnswer) return;
 
     setLoading(true);
     try {
@@ -180,22 +160,16 @@ export default function App() {
         body: JSON.stringify({ response: formattedAnswer }),
       });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Erreur HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
 
       setImageUrl(null);
       setJobId(null);
       setSelectedPoints([]);
 
-      if (autoPoll) {
-        fetchNextJob(true);
-      } else {
-        Alert.alert('Envoyé !', `Réponse transmise :\n\n${formattedAnswer}`);
-      }
+      if (autoPoll) fetchNextJob(true);
+      else Alert.alert('Envoyé !', `Réponse transmise :\n\n${formattedAnswer}`);
     } catch (error) {
-      Alert.alert('Échec de l’envoi', error.message);
+      Alert.alert('Échec', error.message);
     } finally {
       setLoading(false);
     }
@@ -230,13 +204,8 @@ export default function App() {
             placeholder="https://only-faucet.onrender.com"
             placeholderTextColor="#64748b"
             autoCapitalize="none"
-            autoCorrect={false}
           />
-          <TouchableOpacity
-            style={styles.refreshBtn}
-            onPress={() => fetchNextJob(false)}
-            disabled={loading}
-          >
+          <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchNextJob(false)} disabled={loading}>
             <Text style={styles.refreshBtnText}>Charger</Text>
           </TouchableOpacity>
         </View>
@@ -252,46 +221,29 @@ export default function App() {
                 onPress={() => setShowCropControls(!showCropControls)}
               >
                 <Text style={styles.adjustToggleText}>
-                  {showCropControls ? 'Masquer ajustement' : 'Ajuster cadre scène'}
+                  {showCropControls ? 'Masquer ajustement' : 'Ajuster cadre'}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {showCropControls && (
               <View style={styles.cropControlsBox}>
-                <Text style={styles.cropHelp}>
-                  Alignez le cadre vert exactement sur les bords de la scène :
-                </Text>
-
                 <View style={styles.cropControlRow}>
                   <Text style={styles.cropLabel}>Haut :</Text>
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => setCropTopPct((v) => Math.max(0, +(v - 0.01).toFixed(2)))}
-                  >
-                    <Text style={styles.stepBtnText}>▲ Monter</Text>
+                  <TouchableOpacity style={styles.stepBtn} onPress={() => setCropTopPct(v => Math.max(0, +(v - 0.01).toFixed(2)))}>
+                    <Text style={styles.stepBtnText}>▲</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => setCropTopPct((v) => Math.min(0.8, +(v + 0.01).toFixed(2)))}
-                  >
-                    <Text style={styles.stepBtnText}>▼ Descendre</Text>
+                  <TouchableOpacity style={styles.stepBtn} onPress={() => setCropTopPct(v => Math.min(0.8, +(v + 0.01).toFixed(2)))}>
+                    <Text style={styles.stepBtnText}>▼</Text>
                   </TouchableOpacity>
                 </View>
-
                 <View style={styles.cropControlRow}>
                   <Text style={styles.cropLabel}>Bas :</Text>
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => setCropBottomPct((v) => Math.max(0.5, +(v - 0.01).toFixed(2)))}
-                  >
-                    <Text style={styles.stepBtnText}>▲ Monter</Text>
+                  <TouchableOpacity style={styles.stepBtn} onPress={() => setCropBottomPct(v => Math.max(0.5, +(v - 0.01).toFixed(2)))}>
+                    <Text style={styles.stepBtnText}>▲</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => setCropBottomPct((v) => Math.min(1.0, +(v + 0.01).toFixed(2)))}
-                  >
-                    <Text style={styles.stepBtnText}>▼ Descendre</Text>
+                  <TouchableOpacity style={styles.stepBtn} onPress={() => setCropBottomPct(v => Math.min(1.0, +(v + 0.01).toFixed(2)))}>
+                    <Text style={styles.stepBtnText}>▼</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -300,10 +252,7 @@ export default function App() {
             <TouchableOpacity
               activeOpacity={1}
               onPress={handleImagePress}
-              onLayout={(e) => {
-                const { width, height } = e.nativeEvent.layout;
-                setContainerSize({ width, height });
-              }}
+              onLayout={(e) => setContainerSize(e.nativeEvent.layout)}
               style={[styles.imageWrapper, { aspectRatio }]}
             >
               <Image source={{ uri: imageUrl }} style={styles.fullImage} resizeMode="stretch" />
@@ -326,11 +275,7 @@ export default function App() {
               {selectedPoints.map((pt, idx) => {
                 const cellCode = pointToGridCell(pt);
                 return (
-                  <View
-                    key={idx}
-                    pointerEvents="none"
-                    style={[styles.markerContainer, { left: pt.x - 16, top: pt.y - 16 }]}
-                  >
+                  <View key={idx} pointerEvents="none" style={[styles.markerContainer, { left: pt.x - 16, top: pt.y - 16 }]}>
                     <View style={styles.markerCircle}>
                       <Text style={styles.markerNumber}>{idx + 1}</Text>
                     </View>
@@ -341,45 +286,30 @@ export default function App() {
             </TouchableOpacity>
 
             <View style={styles.previewBox}>
-              <Text style={styles.previewTitle}>
-                Coordonnées sélectionnées ({selectedPoints.length}/2) :
-              </Text>
+              <Text style={styles.previewTitle}>Sélection ({selectedPoints.length}/2) :</Text>
               <Text style={styles.previewCode}>
                 {selectedPoints.length === 0
-                  ? 'Touchez les 2 monstres dans le cadre vert'
-                  : selectedPoints.map((p, i) => `Monstre ${i + 1} → ${pointToGridCell(p)}`).join('   |   ')}
+                  ? 'Touchez les 2 monstres'
+                  : selectedPoints.map((p, i) => `M${i + 1} → ${pointToGridCell(p)}`).join(' | ')}
               </Text>
             </View>
 
             <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.clearBtn]}
-                onPress={() => setSelectedPoints([])}
-              >
+              <TouchableOpacity style={[styles.actionBtn, styles.clearBtn]} onPress={() => setSelectedPoints([])}>
                 <Text style={styles.actionBtnText}>Effacer</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={[
-                  styles.actionBtn,
-                  styles.submitBtn,
-                  selectedPoints.length !== 2 && styles.disabledBtn,
-                ]}
+                style={[styles.actionBtn, styles.submitBtn, selectedPoints.length !== 2 && styles.disabledBtn]}
                 onPress={sendResultToServer}
                 disabled={selectedPoints.length !== 2 || loading}
               >
-                <Text style={styles.actionBtnText}>
-                  Envoyer ({previewResult ? previewResult.replace('\n', ' / ') : '0/2'})
-                </Text>
+                <Text style={styles.actionBtnText}>Envoyer</Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>En attente d’une capture…</Text>
-            <Text style={styles.emptySub}>
-              Cliquez sur « Charger » ou activez le mode « Auto : ON » pour récupérer automatiquement les images.
-            </Text>
           </View>
         )}
       </ScrollView>
@@ -407,9 +337,8 @@ const styles = StyleSheet.create({
   adjustToggleBtn: { backgroundColor: '#1e293b', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#475569' },
   adjustToggleText: { color: '#38bdf8', fontSize: 12, fontWeight: '600' },
   cropControlsBox: { backgroundColor: '#1e293b', padding: 10, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
-  cropHelp: { color: '#cbd5e1', fontSize: 12, marginBottom: 8 },
   cropControlRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 4 },
-  cropLabel: { color: '#94a3b8', fontSize: 12, width: 70 },
+  cropLabel: { color: '#94a3b8', fontSize: 12, width: 60 },
   stepBtn: { backgroundColor: '#334155', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
   stepBtnText: { color: '#f8fafc', fontSize: 12, fontWeight: '600' },
   imageWrapper: { width: '100%', backgroundColor: '#000000', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#475569' },
@@ -429,6 +358,5 @@ const styles = StyleSheet.create({
   disabledBtn: { backgroundColor: '#1e293b', opacity: 0.6 },
   actionBtnText: { color: '#ffffff', fontWeight: 'bold', fontSize: 15 },
   emptyState: { marginTop: 60, alignItems: 'center', paddingHorizontal: 20 },
-  emptyTitle: { color: '#e2e8f0', fontSize: 17, fontWeight: 'bold', marginBottom: 8 },
-  emptySub: { color: '#94a3b8', fontSize: 13, textAlign: 'center', lineHeight: 20 }
+  emptyTitle: { color: '#e2e8f0', fontSize: 17, fontWeight: 'bold', marginBottom: 8 }
 });

@@ -34,6 +34,7 @@ export default function App() {
   const [cropLeftPct, setCropLeftPct] = useState(0.0);
   const [cropRightPct, setCropRightPct] = useState(0.98);
   const [showCropControls, setShowCropControls] = useState(false);
+  const [smartCropEnabled, setSmartCropEnabled] = useState(false);
 
   const [selectedPoints, setSelectedPoints] = useState([]);
   const socketRef = useRef(null);
@@ -45,8 +46,17 @@ export default function App() {
     if (!imageUrl) return;
     Image.getSize(imageUrl, (width, height) => {
       setImageNaturalSize({ width, height });
+
+      if (smartCropEnabled) {
+        const estimatedHeaderPx = Math.max(120, Math.round(width * 0.255));
+        const topRatio = Math.min(0.65, Math.max(0.15, estimatedHeaderPx / height));
+        setCropTopPct(Number(topRatio.toFixed(3)));
+        setCropBottomPct(1.0);
+        setCropLeftPct(0.0);
+        setCropRightPct(1.0);
+      }
     }, () => {});
-  }, [imageUrl]);
+  }, [imageUrl, smartCropEnabled]);
 
   const connectSocket = () => {
     const cleanBase = serverUrl.trim().replace(/\/$/, '');
@@ -145,6 +155,28 @@ export default function App() {
       cropWidth: width * (cropRightPct - cropLeftPct),
       cropHeight: height * (cropBottomPct - cropTopPct),
     };
+  };
+
+  const applySmartCrop = () => {
+    const { width, height } = imageNaturalSize;
+    if (width <= 1 || height <= 1) return;
+
+    // Le serveur compose l’image avec un en-tête d’au moins 120 px,
+    // puis place la zone de jeu jusqu’en bas de l’image.
+    const estimatedHeaderPx = Math.max(120, Math.round(width * 0.255));
+    const topRatio = Math.min(0.65, Math.max(0.15, estimatedHeaderPx / height));
+
+    setCropTopPct(Number(topRatio.toFixed(3)));
+    setCropBottomPct(1.0);
+    setCropLeftPct(0.0);
+    setCropRightPct(1.0);
+    setShowCropControls(true);
+  };
+
+  const toggleSmartCrop = () => {
+    const nextValue = !smartCropEnabled;
+    setSmartCropEnabled(nextValue);
+    if (nextValue) applySmartCrop();
   };
 
   const pointToGridCell = (pt) => {
@@ -288,6 +320,14 @@ export default function App() {
             <View style={styles.toolbar}>
               <Text style={styles.jobLabel}>Tâche : {String(jobId).slice(0, 8)}…</Text>
               <TouchableOpacity
+                style={[styles.smartCropBtn, smartCropEnabled && styles.smartCropBtnActive]}
+                onPress={toggleSmartCrop}
+              >
+                <Text style={styles.smartCropText}>
+                  {smartCropEnabled ? 'Auto : ON' : 'Ajustement intelligent'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.adjustToggleBtn}
                 onPress={() => setShowCropControls(!showCropControls)}
               >
@@ -407,6 +447,9 @@ const styles = StyleSheet.create({
   workspace: { width: '100%' },
   toolbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   jobLabel: { color: '#94a3b8', fontSize: 12 },
+  smartCropBtn: { backgroundColor: '#312e81', paddingHorizontal: 9, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#6366f1' },
+  smartCropBtnActive: { backgroundColor: '#047857', borderColor: '#34d399' },
+  smartCropText: { color: '#ffffff', fontSize: 11, fontWeight: '700' },
   adjustToggleBtn: { backgroundColor: '#1e293b', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#475569' },
   adjustToggleText: { color: '#38bdf8', fontSize: 12, fontWeight: '600' },
   cropControlsBox: { backgroundColor: '#1e293b', padding: 10, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },

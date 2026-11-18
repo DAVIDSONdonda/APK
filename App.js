@@ -368,7 +368,9 @@ export default function App() {
                 onPress={sendResultToServer}
                 disabled={selectedPoints.length !== 2 || loading}
               >
-                <Text style={styles.actionBtnText}>Envoyer ({previewResult ? previewResult.replace('\n', ' / ') : '0/2'})</Text>
+                <Text style={styles.actionBtnText}>
+                  Envoyer ({previewResult ? previewResult.replace('\n', ' / ') : '0/2'})
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -410,4 +412,23 @@ const styles = StyleSheet.create({
   cropLabel: { color: '#94a3b8', fontSize: 12, width: 70 },
   stepBtn: { backgroundColor: '#334155', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
   stepBtnText: { color: '#f8fafc', fontSize: 12, fontWeight: '600' },
-  imageWrapper: { width: '100%', backgroundColor: '#000000',
+  imageWrapper: { width: '100%', backgroundColor: '#000000', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#475569' },
+  fullImage: { width: '100%', height: '100%' },
+  cropOverlay: { position: 'absolute', borderWidth: 2, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.06)' },
+  markerContainer: { position: 'absolute', alignItems: 'center' },
+  markerCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(239, 68, 68, 0.9)', borderWidth: 2, borderColor: '#ffffff', justifyContent: 'center', alignItems: 'center' },
+  markerNumber: { color: '#ffffff', fontWeight: 'bold', fontSize: 14 },
+  markerBadge: { marginTop: 2, backgroundColor: '#0f172a', color: '#38bdf8', fontSize: 11, fontWeight: 'bold', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, overflow: 'hidden' },
+  previewBox: { backgroundColor: '#1e293b', padding: 10, borderRadius: 8, marginTop: 10, alignItems: 'center' },
+  previewTitle: { color: '#94a3b8', fontSize: 12, marginBottom: 4 },
+  previewCode: { color: '#10b981', fontWeight: 'bold', fontSize: 14 },
+  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  actionBtn: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
+  clearBtn: { backgroundColor: '#475569' },
+  submitBtn: { backgroundColor: '#10b981' },
+  disabledBtn: { backgroundColor: '#1e293b', opacity: 0.6 },
+  actionBtnText: { color: '#ffffff', fontWeight: 'bold', fontSize: 15 },
+  emptyState: { marginTop: 60, alignItems: 'center', paddingHorizontal: 20 },
+  emptyTitle: { color: '#e2e8f0', fontSize: 17, fontWeight: 'bold', marginBottom: 8 },
+  emptySub: { color: '#94a3b8', fontSize: 13, textAlign: 'center', lineHeight: 20 }
+});

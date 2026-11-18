@@ -1,0 +1,12 @@
+expo:
+  name: "ONLY-FAUCET Solver"
+  slug: "only-faucet-solver"
+  version: "1.0.0"
+  orientation: "portrait"
+  userInterfaceStyle: "dark"
+  android:
+    package: "com.onlyfaucet.solver"
+    permissions:
+      - "INTERNET"
+  ios:
+    supportsTablet: true

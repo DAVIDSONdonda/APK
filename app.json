@@ -8,8 +8,12 @@
     "android": {
       "package": "com.onlyfaucet.solver",
       "permissions": [
-        "INTERNET"
+        "INTERNET",
+        "VIBRATE"
       ]
-    }
+    },
+    "plugins": [
+      "expo-audio"
+    ]
   }
 }

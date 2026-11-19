@@ -24,6 +24,7 @@ export default function App() {
 
   const [loading, setLoading] = useState(false);
   const [jobId, setJobId] = useState(null);
+  const [expiredJobId, setExpiredJobId] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
   const [imageNaturalSize, setImageNaturalSize] = useState({ width: 1, height: 1 });
 
@@ -98,8 +99,18 @@ export default function App() {
 
         if (data.type === 'new_job' && data.id && data.imageDataUrl) {
           setJobId(data.id);
+          setExpiredJobId(null);
           setImageUrl(data.imageDataUrl);
           setSelectedPoints([]);
+          setLoading(false);
+          return;
+        }
+
+        if (data.type === 'job_expired') {
+          setImageUrl(null);
+          setJobId(null);
+          setSelectedPoints([]);
+          setExpiredJobId(data.id || null);
           setLoading(false);
           return;
         }
@@ -233,6 +244,22 @@ export default function App() {
     const cells = selectedPoints.map(pointToGridCell).filter(Boolean);
     if (cells.length !== 2) return null;
     return cells.join('\n');
+  };
+
+  const requestReloadPage = () => {
+    if (!expiredJobId) return;
+
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      Alert.alert('Connexion indisponible', 'Reconnectez l’application à Render.');
+      return;
+    }
+
+    socket.send(JSON.stringify({
+      type: 'reload_extension_page',
+      id: expiredJobId,
+    }));
+    setExpiredJobId(null);
   };
 
   const sendResultToServer = async () => {
@@ -420,7 +447,17 @@ export default function App() {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>En attente d’une capture…</Text>
+            {expiredJobId ? (
+              <>
+                <Text style={styles.expiredTitle}>La tâche a expiré après 2 minutes.</Text>
+                <Text style={styles.expiredText}>Recharge la page de l’extension pour recevoir une nouvelle tâche.</Text>
+                <TouchableOpacity style={styles.reloadPageBtn} onPress={requestReloadPage}>
+                  <Text style={styles.actionBtnText}>Charger la page</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={styles.emptyTitle}>En attente d’une capture…</Text>
+            )}
           </View>
         )}
       </ScrollView>
@@ -474,5 +511,8 @@ const styles = StyleSheet.create({
   disabledBtn: { backgroundColor: '#1e293b', opacity: 0.6 },
   actionBtnText: { color: '#ffffff', fontWeight: 'bold', fontSize: 15 },
   emptyState: { marginTop: 60, alignItems: 'center', paddingHorizontal: 20 },
-  emptyTitle: { color: '#e2e8f0', fontSize: 17, fontWeight: 'bold', marginBottom: 8 }
+  emptyTitle: { color: '#e2e8f0', fontSize: 17, fontWeight: 'bold', marginBottom: 8 },
+  expiredTitle: { color: '#fbbf24', fontSize: 17, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
+  expiredText: { color: '#cbd5e1', fontSize: 13, textAlign: 'center', marginBottom: 16 },
+  reloadPageBtn: { backgroundColor: '#2563eb', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 }
 });

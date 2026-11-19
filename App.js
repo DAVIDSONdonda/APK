@@ -10,14 +10,17 @@ import {
   ScrollView,
   TextInput,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  Vibration
 } from 'react-native';
+import { useAudioPlayer } from 'expo-audio';
 
 const DEFAULT_SERVER_URL = 'https://only-faucet.onrender.com';
 const GRID_COLS = 23; 
 const GRID_ROWS = 14; 
 
 export default function App() {
+  const taskAlertPlayer = useAudioPlayer(require('./assets/task-alert.wav'));
   const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
   const [connected, setConnected] = useState(false);
   const [connectionState, setConnectionState] = useState('connecting');
@@ -38,10 +41,56 @@ export default function App() {
   const [smartCropEnabled, setSmartCropEnabled] = useState(false);
 
   const [selectedPoints, setSelectedPoints] = useState([]);
+  const [pendingJobs, setPendingJobs] = useState([]);
   const socketRef = useRef(null);
+  const activeJobRef = useRef(null);
+  const pendingJobsRef = useRef([]);
   const pingTimerRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const manualCloseRef = useRef(false);
+
+  const updatePendingJobs = (jobs) => {
+    pendingJobsRef.current = jobs;
+    setPendingJobs(jobs);
+  };
+
+  const displayJob = (job, signal = 'none') => {
+    activeJobRef.current = job.id;
+    setJobId(job.id);
+    setExpiredJobId(null);
+    setImageUrl(job.imageDataUrl);
+    setSelectedPoints([]);
+    setLoading(false);
+
+    if (signal === 'sound') {
+      try {
+        taskAlertPlayer.seekTo(0);
+        taskAlertPlayer.play();
+      } catch (error) {
+        console.warn('Impossible de jouer le son de nouvelle tâche :', error);
+      }
+    }
+  };
+
+  const displayNextPendingJob = () => {
+    const [nextJob, ...remainingJobs] = pendingJobsRef.current;
+    if (!nextJob) return false;
+    updatePendingJobs(remainingJobs);
+    displayJob(nextJob);
+    return true;
+  };
+
+  const finishDisplayedJob = () => {
+    setSelectedPoints([]);
+    if (pendingJobsRef.current.length > 0) {
+      Vibration.vibrate([0, 200, 120, 200]);
+      displayNextPendingJob();
+    } else {
+      activeJobRef.current = null;
+      setImageUrl(null);
+      setJobId(null);
+    }
+  };
 
   useEffect(() => {
     if (!imageUrl) return;
@@ -98,20 +147,41 @@ export default function App() {
         const data = JSON.parse(event.data);
 
         if (data.type === 'new_job' && data.id && data.imageDataUrl) {
-          setJobId(data.id);
-          setExpiredJobId(null);
-          setImageUrl(data.imageDataUrl);
-          setSelectedPoints([]);
-          setLoading(false);
+          if (
+            activeJobRef.current === data.id ||
+            pendingJobsRef.current.some((job) => job.id === data.id)
+          ) {
+            return;
+          }
+
+          if (activeJobRef.current) {
+            updatePendingJobs([...pendingJobsRef.current, data]);
+          } else if (pendingJobsRef.current.length > 0) {
+            const [nextJob, ...remainingJobs] = pendingJobsRef.current;
+            updatePendingJobs([...remainingJobs, data]);
+            displayJob(nextJob);
+          } else {
+            displayJob(data, 'sound');
+          }
           return;
         }
 
         if (data.type === 'job_expired') {
-          setImageUrl(null);
-          setJobId(null);
-          setSelectedPoints([]);
-          setExpiredJobId(data.id || null);
-          setLoading(false);
+          if (data.id && data.id === activeJobRef.current) {
+            setSelectedPoints([]);
+            if (pendingJobsRef.current.length > 0) {
+              Vibration.vibrate([0, 200, 120, 200]);
+              displayNextPendingJob();
+            } else {
+              activeJobRef.current = null;
+              setImageUrl(null);
+              setJobId(null);
+              setExpiredJobId(data.id);
+              setLoading(false);
+            }
+          } else {
+            updatePendingJobs(pendingJobsRef.current.filter((job) => job.id !== data.id));
+          }
           return;
         }
 
@@ -279,9 +349,7 @@ export default function App() {
         response: formattedAnswer,
       }));
 
-      setImageUrl(null);
-      setJobId(null);
-      setSelectedPoints([]);
+      finishDisplayedJob();
     } catch (error) {
       Alert.alert('Échec', error.message);
     } finally {
@@ -345,7 +413,12 @@ export default function App() {
         {imageUrl ? (
           <View style={styles.workspace}>
             <View style={styles.toolbar}>
-              <Text style={styles.jobLabel}>Tâche : {String(jobId).slice(0, 8)}…</Text>
+              <View>
+                <Text style={styles.jobLabel}>Tâche : {String(jobId).slice(0, 8)}…</Text>
+                {pendingJobs.length > 0 && (
+                  <Text style={styles.pendingLabel}>{pendingJobs.length} tâche(s) en attente</Text>
+                )}
+              </View>
               <TouchableOpacity
                 style={[styles.smartCropBtn, smartCropEnabled && styles.smartCropBtnActive]}
                 onPress={toggleSmartCrop}
@@ -484,6 +557,7 @@ const styles = StyleSheet.create({
   workspace: { width: '100%' },
   toolbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   jobLabel: { color: '#94a3b8', fontSize: 12 },
+  pendingLabel: { color: '#fbbf24', fontSize: 11, marginTop: 3 },
   smartCropBtn: { backgroundColor: '#312e81', paddingHorizontal: 9, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#6366f1' },
   smartCropBtnActive: { backgroundColor: '#047857', borderColor: '#34d399' },
   smartCropText: { color: '#ffffff', fontSize: 11, fontWeight: '700' },

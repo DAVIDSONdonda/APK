@@ -450,9 +450,9 @@ export default function App() {
             {expiredJobId ? (
               <>
                 <Text style={styles.expiredTitle}>La tâche a expiré après 2 minutes.</Text>
-                <Text style={styles.expiredText}>Recharge la page de l’extension pour recevoir une nouvelle tâche.</Text>
+                <Text style={styles.expiredText}>Appuie sur « Réessayer » pour recharger la page de l’extension.</Text>
                 <TouchableOpacity style={styles.reloadPageBtn} onPress={requestReloadPage}>
-                  <Text style={styles.actionBtnText}>Charger la page</Text>
+                  <Text style={styles.actionBtnText}>Réessayer</Text>
                 </TouchableOpacity>
               </>
             ) : (
